@@ -1,179 +1,278 @@
-import { supabase } from '@/lib/supabase';
-import NavBar from '../components/NavBar';
-import Link from 'next/link';
+"use client";
 
-export default async function Home() {
-  const { data, error } = await supabase
-    .from('pod_submissions')
-    .select('id, created_at, customer_name, order_number, delivery_status, email_status')
-    .order('created_at', { ascending: false });
+import { useState } from "react";
 
-  const totalPods = data?.length ?? 0;
-  const sentEmails = data?.filter((row) => row.email_status === 'sent').length ?? 0;
-  const pendingEmails =
-    data?.filter((row) => row.email_status !== 'sent').length ?? 0;
+const deliveryTimeOptions = [
+  "8:00 AM",
+  "8:30 AM",
+  "9:00 AM",
+  "9:30 AM",
+  "10:00 AM",
+  "10:30 AM",
+  "11:00 AM",
+  "11:30 AM",
+  "12:00 PM",
+  "12:30 PM",
+  "1:00 PM",
+  "1:30 PM",
+  "2:00 PM",
+  "2:30 PM",
+  "3:00 PM",
+  "3:30 PM",
+  "4:00 PM",
+  "4:30 PM",
+  "5:00 PM",
+];
 
-  const recentPods = data?.slice(0, 5) ?? [];
+export default function HomePage() {
+  const [orderNumber, setOrderNumber] = useState("");
+  const [company, setCompany] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
+  const [items, setItems] = useState("");
+  const [driverName, setDriverName] = useState("");
+  const [driverPhone, setDriverPhone] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setStatusMessage("");
+
+    try {
+      const response = await fetch("/api/pod/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          order_number: orderNumber,
+          company,
+          customer_name: customerName,
+          recipient_email: recipientEmail,
+          delivery_address: deliveryAddress,
+          delivery_date: deliveryDate,
+          delivery_time: deliveryTime,
+          items,
+          driver_name: driverName,
+          driver_phone: driverPhone,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create POD.");
+      }
+
+      setStatusMessage("POD created and SMS sent successfully.");
+
+      setOrderNumber("");
+      setCompany("");
+      setCustomerName("");
+      setRecipientEmail("");
+      setDeliveryAddress("");
+      setDeliveryDate("");
+      setDeliveryTime("");
+      setItems("");
+      setDriverName("");
+      setDriverPhone("");
+    } catch (error: any) {
+      setStatusMessage(error.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <main style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#f7f9fc', minHeight: '100vh' }}>
-      <NavBar />
+    <main style={{ maxWidth: "800px", margin: "40px auto", padding: "20px" }}>
+      <h1>Create POD</h1>
+      <p>Enter the POD details below and send the signature link to the driver.</p>
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
-        <section
-          style={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #d9e2ec',
-            borderRadius: '12px',
-            padding: '28px',
-            marginBottom: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          }}
-        >
-          <h1 style={{ margin: 0, fontSize: '32px', color: '#102a43' }}>
-            POD Operations Dashboard
-          </h1>
-          <p style={{ marginTop: '10px', color: '#486581', fontSize: '16px' }}>
-            Create Proof of Delivery records, generate professional PDFs, email customers,
-            and track delivery history in one place.
+      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
+        <div>
+          <label htmlFor="order_number">Order Number</label>
+          <br />
+          <input
+            id="order_number"
+            name="order_number"
+            type="text"
+            value={orderNumber}
+            onChange={(e) => setOrderNumber(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="company">Company</label>
+          <br />
+          <input
+            id="company"
+            name="company"
+            type="text"
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="customer_name">Customer Name</label>
+          <br />
+          <input
+            id="customer_name"
+            name="customer_name"
+            type="text"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="recipient_email">Recipient Email</label>
+          <br />
+          <input
+            id="recipient_email"
+            name="recipient_email"
+            type="email"
+            value={recipientEmail}
+            onChange={(e) => setRecipientEmail(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="delivery_address">Delivery Address</label>
+          <br />
+          <input
+            id="delivery_address"
+            name="delivery_address"
+            type="text"
+            value={deliveryAddress}
+            onChange={(e) => setDeliveryAddress(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="delivery_date">Delivery Date</label>
+          <br />
+          <input
+            id="delivery_date"
+            name="delivery_date"
+            type="date"
+            value={deliveryDate}
+            onChange={(e) => setDeliveryDate(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="delivery_time">Delivery Time</label>
+          <br />
+          <select
+            id="delivery_time"
+            name="delivery_time"
+            value={deliveryTime}
+            onChange={(e) => setDeliveryTime(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          >
+            <option value="">Select delivery time</option>
+            {deliveryTimeOptions.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="items">Items</label>
+          <br />
+          <textarea
+            id="items"
+            name="items"
+            value={items}
+            onChange={(e) => setItems(e.target.value)}
+            required
+            rows={5}
+            placeholder="Example: 10 boxes of tile, 2 ladders, 1 pallet of cement"
+            style={{
+              width: "100%",
+              padding: "10px",
+              marginTop: "6px",
+              resize: "vertical",
+            }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="driver_name">Driver Name</label>
+          <br />
+          <input
+            id="driver_name"
+            name="driver_name"
+            type="text"
+            value={driverName}
+            onChange={(e) => setDriverName(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="driver_phone">Driver Phone</label>
+          <br />
+          <input
+            id="driver_phone"
+            name="driver_phone"
+            type="tel"
+            placeholder="+19175551234"
+            value={driverPhone}
+            onChange={(e) => setDriverPhone(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginTop: "6px" }}
+          />
+          <p style={{ fontSize: "14px", marginTop: "6px" }}>
+            Enter phone number in format: +19175551234
           </p>
+        </div>
 
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '20px' }}>
-            <Link
-              href="/pod/new"
-              style={{
-                backgroundColor: '#0070f3',
-                color: '#ffffff',
-                padding: '12px 18px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: 'bold',
-              }}
-            >
-              New POD Entry
-            </Link>
-
-            <Link
-              href="/pod/history"
-              style={{
-                backgroundColor: '#ffffff',
-                color: '#102a43',
-                padding: '12px 18px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: 'bold',
-                border: '1px solid #bcccdc',
-              }}
-            >
-              View POD History
-            </Link>
-          </div>
-        </section>
-
-        <section
+        <button
+          type="submit"
+          disabled={loading}
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '16px',
-            marginBottom: '24px',
+            padding: "12px 16px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            backgroundColor: loading ? "#6ea8fe" : "#007bff",
+            color: "#fff",
+            border: "none",
+            borderRadius: "6px",
+            transition: "0.2s",
           }}
         >
-          <DashboardCard title="Total PODs" value={String(totalPods)} />
-          <DashboardCard title="Emails Sent" value={String(sentEmails)} />
-          <DashboardCard title="Pending / Failed" value={String(pendingEmails)} />
-        </section>
+          {loading ? "Submitting..." : "Create POD and Send SMS"}
+        </button>
+      </form>
 
-        <section
-          style={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #d9e2ec',
-            borderRadius: '12px',
-            padding: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          }}
-        >
-          <h2 style={{ marginTop: 0, color: '#102a43' }}>Recent POD Activity</h2>
-
-          {error && (
-            <p style={{ color: 'red' }}>
-              Error loading dashboard data: {error.message}
-            </p>
-          )}
-
-          {!error && recentPods.length === 0 && (
-            <p style={{ color: '#486581' }}>No POD records found yet.</p>
-          )}
-
-          {!error && recentPods.length > 0 && (
-            <div style={{ overflowX: 'auto' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  minWidth: '700px',
-                }}
-              >
-                <thead>
-                  <tr style={{ backgroundColor: '#f0f4f8' }}>
-                    <th style={thStyle}>Created</th>
-                    <th style={thStyle}>Customer</th>
-                    <th style={thStyle}>Order #</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Email</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentPods.map((pod) => (
-                    <tr key={pod.id}>
-                      <td style={tdStyle}>
-                        {pod.created_at
-                          ? new Date(pod.created_at).toLocaleString()
-                          : ''}
-                      </td>
-                      <td style={tdStyle}>{pod.customer_name}</td>
-                      <td style={tdStyle}>{pod.order_number}</td>
-                      <td style={tdStyle}>{pod.delivery_status}</td>
-                      <td style={tdStyle}>{pod.email_status || 'pending'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
+      {statusMessage && (
+        <div style={{ marginTop: "20px", fontWeight: "bold" }}>
+          {statusMessage}
+        </div>
+      )}
     </main>
   );
 }
-
-function DashboardCard({ title, value }: { title: string; value: string }) {
-  return (
-    <div
-      style={{
-        backgroundColor: '#ffffff',
-        border: '1px solid #d9e2ec',
-        borderRadius: '12px',
-        padding: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-      }}
-    >
-      <div style={{ color: '#486581', fontSize: '14px', marginBottom: '8px' }}>{title}</div>
-      <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#102a43' }}>{value}</div>
-    </div>
-  );
-}
-
-const thStyle = {
-  borderBottom: '1px solid #d9e2ec',
-  padding: '12px',
-  textAlign: 'left' as const,
-  color: '#243b53',
-  fontSize: '14px',
-};
-
-const tdStyle = {
-  borderBottom: '1px solid #e6edf3',
-  padding: '12px',
-  color: '#334e68',
-  fontSize: '14px',
-};

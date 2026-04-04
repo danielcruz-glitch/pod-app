@@ -1,33 +1,32 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import SignatureCanvas from 'react-signature-canvas';
 import NavBar from '../../../components/NavBar';
 
 export default function NewPodPage() {
-  const sigCanvas = useRef<SignatureCanvas | null>(null);
   const fieldRefs = useRef<(HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null)[]>([]);
 
   const [form, setForm] = useState({
     delivery_date: '',
     delivery_time: '',
     driver_name: '',
+    driver_phone: '',
     customer_name: '',
     company_name: '',
     delivery_address: '',
     order_number: '',
     items_delivered: '',
     delivery_status: 'Delivered',
-    receiver_printed_name: '',
     notes: '',
     recipient_email: '',
+    billing_email: '',
     cc_email: '',
     submitted_by: '',
-    signature_data: '',
   });
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [signingLink, setSigningLink] = useState('');
   const [activeField, setActiveField] = useState('');
 
   function handleChange(
@@ -37,10 +36,6 @@ export default function NewPodPage() {
       ...form,
       [e.target.name]: e.target.value,
     });
-  }
-
-  function clearSignature() {
-    sigCanvas.current?.clear();
   }
 
   function handleKeyDown(
@@ -58,22 +53,14 @@ export default function NewPodPage() {
     e.preventDefault();
     setLoading(true);
     setMessage('');
+    setSigningLink('');
 
     try {
-      let signatureData = '';
-
-      if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-        signatureData = sigCanvas.current
-          .getTrimmedCanvas()
-          .toDataURL('image/png');
-      }
-
-      const response = await fetch('/api/pod/submit', {
+      const response = await fetch('/api/pod/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          signature_data: signatureData,
           items_delivered: form.items_delivered
             ? Number(form.items_delivered)
             : null,
@@ -86,27 +73,27 @@ export default function NewPodPage() {
         throw new Error(result.error || 'Something went wrong.');
       }
 
-      setMessage(result.message || 'POD submitted successfully.');
+      setMessage(result.message || 'Dispatch POD created successfully.');
+      setSigningLink(result.signingLink || '');
 
       setForm({
         delivery_date: '',
         delivery_time: '',
         driver_name: '',
+        driver_phone: '',
         customer_name: '',
         company_name: '',
         delivery_address: '',
         order_number: '',
         items_delivered: '',
         delivery_status: 'Delivered',
-        receiver_printed_name: '',
         notes: '',
         recipient_email: '',
+        billing_email: '',
         cc_email: '',
         submitted_by: '',
-        signature_data: '',
       });
 
-      sigCanvas.current?.clear();
       fieldRefs.current[0]?.focus();
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
@@ -130,10 +117,10 @@ export default function NewPodPage() {
           }}
         >
           <h1 style={{ marginTop: 0, marginBottom: '8px', color: '#102a43' }}>
-            New POD Submission
+            Dispatch POD Entry
           </h1>
           <p style={{ marginTop: 0, marginBottom: '24px', color: '#486581' }}>
-            Data-entry mode: press <strong>Enter</strong> to move to the next field.
+            Dispatch prepares the POD here. The signing link will be sent to the driver/customer in the next step.
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -146,9 +133,7 @@ export default function NewPodPage() {
             >
               <FormField label="Delivery Date">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[0] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[0] = el; }}
                   name="delivery_date"
                   type="date"
                   value={form.delivery_date}
@@ -163,9 +148,7 @@ export default function NewPodPage() {
 
               <FormField label="Delivery Time">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[1] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[1] = el; }}
                   name="delivery_time"
                   placeholder="Delivery Time"
                   value={form.delivery_time}
@@ -179,9 +162,7 @@ export default function NewPodPage() {
 
               <FormField label="Driver Name">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[2] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[2] = el; }}
                   name="driver_name"
                   placeholder="Driver Name"
                   value={form.driver_name}
@@ -194,16 +175,29 @@ export default function NewPodPage() {
                 />
               </FormField>
 
+              <FormField label="Driver Phone">
+                <input
+                  ref={(el) => { fieldRefs.current[3] = el; }}
+                  name="driver_phone"
+                  placeholder="Driver Phone"
+                  value={form.driver_phone}
+                  onChange={handleChange}
+                  onKeyDown={(e) => handleKeyDown(e, 3)}
+                  onFocus={() => setActiveField('driver_phone')}
+                  onBlur={() => setActiveField('')}
+                  required
+                  style={inputStyle(activeField === 'driver_phone')}
+                />
+              </FormField>
+
               <FormField label="Customer Name">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[3] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[4] = el; }}
                   name="customer_name"
                   placeholder="Customer Name"
                   value={form.customer_name}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 3)}
+                  onKeyDown={(e) => handleKeyDown(e, 4)}
                   onFocus={() => setActiveField('customer_name')}
                   onBlur={() => setActiveField('')}
                   required
@@ -213,14 +207,12 @@ export default function NewPodPage() {
 
               <FormField label="Company Name">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[4] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[5] = el; }}
                   name="company_name"
                   placeholder="Company Name"
                   value={form.company_name}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 4)}
+                  onKeyDown={(e) => handleKeyDown(e, 5)}
                   onFocus={() => setActiveField('company_name')}
                   onBlur={() => setActiveField('')}
                   style={inputStyle(activeField === 'company_name')}
@@ -229,14 +221,12 @@ export default function NewPodPage() {
 
               <FormField label="Delivery Address">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[5] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[6] = el; }}
                   name="delivery_address"
                   placeholder="Delivery Address"
                   value={form.delivery_address}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 5)}
+                  onKeyDown={(e) => handleKeyDown(e, 6)}
                   onFocus={() => setActiveField('delivery_address')}
                   onBlur={() => setActiveField('')}
                   required
@@ -246,14 +236,12 @@ export default function NewPodPage() {
 
               <FormField label="Order Number">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[6] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[7] = el; }}
                   name="order_number"
                   placeholder="Order Number"
                   value={form.order_number}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 6)}
+                  onKeyDown={(e) => handleKeyDown(e, 7)}
                   onFocus={() => setActiveField('order_number')}
                   onBlur={() => setActiveField('')}
                   required
@@ -263,15 +251,13 @@ export default function NewPodPage() {
 
               <FormField label="Items Delivered">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[7] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[8] = el; }}
                   name="items_delivered"
                   type="number"
                   placeholder="Items Delivered"
                   value={form.items_delivered}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 7)}
+                  onKeyDown={(e) => handleKeyDown(e, 8)}
                   onFocus={() => setActiveField('items_delivered')}
                   onBlur={() => setActiveField('')}
                   style={inputStyle(activeField === 'items_delivered')}
@@ -280,13 +266,11 @@ export default function NewPodPage() {
 
               <FormField label="Delivery Status">
                 <select
-                  ref={(el) => {
-                    fieldRefs.current[8] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[9] = el; }}
                   name="delivery_status"
                   value={form.delivery_status}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 8)}
+                  onKeyDown={(e) => handleKeyDown(e, 9)}
                   onFocus={() => setActiveField('delivery_status')}
                   onBlur={() => setActiveField('')}
                   required
@@ -301,15 +285,13 @@ export default function NewPodPage() {
 
               <FormField label="Recipient Email">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[9] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[10] = el; }}
                   name="recipient_email"
                   type="email"
                   placeholder="Recipient Email"
                   value={form.recipient_email}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 9)}
+                  onKeyDown={(e) => handleKeyDown(e, 10)}
                   onFocus={() => setActiveField('recipient_email')}
                   onBlur={() => setActiveField('')}
                   required
@@ -317,17 +299,31 @@ export default function NewPodPage() {
                 />
               </FormField>
 
+              <FormField label="Billing Email">
+                <input
+                  ref={(el) => { fieldRefs.current[11] = el; }}
+                  name="billing_email"
+                  type="email"
+                  placeholder="Billing Email"
+                  value={form.billing_email}
+                  onChange={handleChange}
+                  onKeyDown={(e) => handleKeyDown(e, 11)}
+                  onFocus={() => setActiveField('billing_email')}
+                  onBlur={() => setActiveField('')}
+                  required
+                  style={inputStyle(activeField === 'billing_email')}
+                />
+              </FormField>
+
               <FormField label="CC Email">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[10] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[12] = el; }}
                   name="cc_email"
                   type="email"
                   placeholder="CC Email (optional)"
                   value={form.cc_email}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 10)}
+                  onKeyDown={(e) => handleKeyDown(e, 12)}
                   onFocus={() => setActiveField('cc_email')}
                   onBlur={() => setActiveField('')}
                   style={inputStyle(activeField === 'cc_email')}
@@ -336,14 +332,12 @@ export default function NewPodPage() {
 
               <FormField label="Submitted By">
                 <input
-                  ref={(el) => {
-                    fieldRefs.current[11] = el;
-                  }}
+                  ref={(el) => { fieldRefs.current[13] = el; }}
                   name="submitted_by"
                   placeholder="Submitted By"
                   value={form.submitted_by}
                   onChange={handleChange}
-                  onKeyDown={(e) => handleKeyDown(e, 11)}
+                  onKeyDown={(e) => handleKeyDown(e, 13)}
                   onFocus={() => setActiveField('submitted_by')}
                   onBlur={() => setActiveField('')}
                   style={inputStyle(activeField === 'submitted_by')}
@@ -353,14 +347,12 @@ export default function NewPodPage() {
               <div style={{ gridColumn: '1 / -1' }}>
                 <FormField label="Notes">
                   <textarea
-                    ref={(el) => {
-                      fieldRefs.current[12] = el;
-                    }}
+                    ref={(el) => { fieldRefs.current[14] = el; }}
                     name="notes"
                     placeholder="Notes"
                     value={form.notes}
                     onChange={handleChange}
-                    onKeyDown={(e) => handleKeyDown(e, 12)}
+                    onKeyDown={(e) => handleKeyDown(e, 14)}
                     onFocus={() => setActiveField('notes')}
                     onBlur={() => setActiveField('')}
                     rows={4}
@@ -368,84 +360,6 @@ export default function NewPodPage() {
                       ...inputStyle(activeField === 'notes'),
                       resize: 'vertical',
                     }}
-                  />
-                </FormField>
-              </div>
-
-              <div style={{ gridColumn: '1 / -1' }}>
-                <div
-                  style={{
-                    border: '1px solid #d9e2ec',
-                    borderRadius: '10px',
-                    padding: '18px',
-                    backgroundColor: '#f8fbff',
-                  }}
-                >
-                  <label
-                    style={{
-                      display: 'block',
-                      marginBottom: '10px',
-                      fontWeight: 'bold',
-                      color: '#102a43',
-                    }}
-                  >
-                    Receiver Signature
-                  </label>
-
-                  <div
-                    style={{
-                      border: '1px solid #bcccdc',
-                      background: '#ffffff',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      maxWidth: '520px',
-                    }}
-                  >
-                    <SignatureCanvas
-                      ref={sigCanvas}
-                      penColor="black"
-                      canvasProps={{
-                        width: 520,
-                        height: 180,
-                        style: { width: '100%', height: '180px', display: 'block' },
-                      }}
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={clearSignature}
-                    style={{
-                      marginTop: '10px',
-                      padding: '10px 14px',
-                      backgroundColor: '#829ab1',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Clear Signature
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ gridColumn: '1 / -1' }}>
-                <FormField label="Receiver Printed Name">
-                  <input
-                    ref={(el) => {
-                      fieldRefs.current[13] = el;
-                    }}
-                    name="receiver_printed_name"
-                    placeholder="Receiver Printed Name"
-                    value={form.receiver_printed_name}
-                    onChange={handleChange}
-                    onKeyDown={(e) => handleKeyDown(e, 13)}
-                    onFocus={() => setActiveField('receiver_printed_name')}
-                    onBlur={() => setActiveField('')}
-                    required
-                    style={inputStyle(activeField === 'receiver_printed_name')}
                   />
                 </FormField>
               </div>
@@ -467,7 +381,7 @@ export default function NewPodPage() {
                   boxShadow: '0 2px 6px rgba(0,112,243,0.25)',
                 }}
               >
-                {loading ? 'Submitting...' : 'Submit POD'}
+                {loading ? 'Creating POD...' : 'Create POD'}
               </button>
 
               {message && (
@@ -482,6 +396,25 @@ export default function NewPodPage() {
                 </p>
               )}
             </div>
+
+            {signingLink && (
+              <div
+                style={{
+                  marginTop: '20px',
+                  padding: '16px',
+                  backgroundColor: '#f0f9ff',
+                  border: '1px solid #bcdffb',
+                  borderRadius: '10px',
+                }}
+              >
+                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#102a43' }}>
+                  Signing Link
+                </div>
+                <div style={{ wordBreak: 'break-all', color: '#0b4f8a' }}>
+                  {signingLink}
+                </div>
+              </div>
+            )}
           </form>
         </div>
       </div>
