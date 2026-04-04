@@ -1,169 +1,179 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendDriverSms } from "@/lib/sendSms";
+import { createClient } from "@supabase/supabase-js";
+import { twilioClient } from "@/lib/twilio";
+import { formatUSPhoneNumber } from "@/lib/formatPhoneNumber";
 
-export async function POST(req: Request) {
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const order_number = String(body.order_number || "").trim();
-    const company = String(body.company || "").trim();
-    const customer_name = String(body.customer_name || "").trim();
-    const recipient_email = String(body.recipient_email || "").trim();
-    const delivery_address = String(body.delivery_address || "").trim();
-    const delivery_date = String(body.delivery_date || "").trim();
-    const delivery_time = String(body.delivery_time || "").trim();
-    const items = String(body.items || "").trim();
-    const driver_name = String(body.driver_name || "").trim();
-    const driver_phone = String(body.driver_phone || "").trim();
+    const {
+      company,
+      receiver_printed_name,
+      driver_phone,
+      billing_email,
+      cc_email,
+      submitted_by,
+      items,
+    } = body;
 
-    if (!order_number) {
-      return NextResponse.json(
-        { error: "Order number is required." },
-        { status: 400 }
-      );
-    }
+    console.log("Incoming POD body:", body);
 
+    // Step 1: Validate required fields
     if (!company) {
       return NextResponse.json(
-        { error: "Company is required." },
+        { success: false, message: "Company is required" },
         { status: 400 }
       );
     }
 
-    if (!customer_name) {
+    if (!receiver_printed_name) {
       return NextResponse.json(
-        { error: "Customer name is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!recipient_email) {
-      return NextResponse.json(
-        { error: "Recipient email is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!delivery_address) {
-      return NextResponse.json(
-        { error: "Delivery address is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!delivery_date) {
-      return NextResponse.json(
-        { error: "Delivery date is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!delivery_time) {
-      return NextResponse.json(
-        { error: "Delivery time is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!items) {
-      return NextResponse.json(
-        { error: "Items are required." },
-        { status: 400 }
-      );
-    }
-
-    if (!driver_name) {
-      return NextResponse.json(
-        { error: "Driver name is required." },
+        { success: false, message: "Receiver printed name is required" },
         { status: 400 }
       );
     }
 
     if (!driver_phone) {
       return NextResponse.json(
-        { error: "Driver phone is required." },
+        { success: false, message: "Driver phone is required" },
         { status: 400 }
       );
     }
 
-    const signing_token = crypto.randomBytes(24).toString("hex");
+    // Step 2: Format phone number
+    const formattedPhone = formatUSPhoneNumber(driver_phone);
 
-    const { data, error } = await supabaseAdmin
+    if (!formattedPhone) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Invalid phone number. Enter a 10-digit US number like 6462048114",
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log("Formatted phone:", formattedPhone);
+
+    // Step 3: Generate token
+    const signingToken = crypto.randomBytes(24).toString("hex");
+
+    // Step 4: Build signing link
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+    const signingLink = `${appUrl}/pod/sign/${signingToken}`;
+
+    console.log("Generated signing token:", signingToken);
+    console.log("Generated signing link:", signingLink);
+
+    // Step 5: Insert POD record first
+    const { data: insertedPod, error: insertError } = await supabase
       .from("pod_submissions")
       .insert([
         {
-          order_number,
           company,
-          customer_name,
-          recipient_email,
-          delivery_address,
-          delivery_date,
-          delivery_time,
-          items,
-          driver_name,
-          driver_phone,
-          signing_token,
-          delivery_status: "Pending",
+          receiver_printed_name,
+          driver_phone: formattedPhone,
+          billing_email: billing_email || null,
+          cc_email: cc_email || null,
+          submitted_by: submitted_by || null,
+          items: items || null,
+          signing_token: signingToken,
+          signing_status: "pending",
           pod_status: "Pending Signature",
           sms_status: "pending",
-          signing_status: "pending",
         },
       ])
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json(
-        { error: `Failed to save POD in Supabase: ${error.message}` },
-        { status: 500 }
-      );
-    }
-
-    const signingLink = `${process.env.NEXT_PUBLIC_BASE_URL}/pod/sign/${signing_token}`;
-
-    try {
-      await sendDriverSms(driver_phone, signingLink);
-
-      const { error: updateError } = await supabaseAdmin
-        .from("pod_submissions")
-        .update({ sms_status: "sent" })
-        .eq("id", data.id);
-
-      if (updateError) {
-        console.error("Failed to update sms_status to sent:", updateError.message);
-      }
-    } catch (smsError: any) {
-      const { error: failedUpdateError } = await supabaseAdmin
-        .from("pod_submissions")
-        .update({ sms_status: "failed" })
-        .eq("id", data.id);
-
-      if (failedUpdateError) {
-        console.error(
-          "Failed to update sms_status to failed:",
-          failedUpdateError.message
-        );
-      }
-
+    if (insertError) {
+      console.error("Supabase insert failed:", insertError);
       return NextResponse.json(
         {
-          error: `POD saved, but SMS failed: ${smsError.message}`,
+          success: false,
+          message: "Failed to save POD to database",
+          error: insertError.message,
         },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "POD saved and SMS sent successfully.",
-      pod: data,
-      signingLink,
-    });
-  } catch (err: any) {
+    console.log("POD inserted:", insertedPod);
+
+    // Step 6: Send SMS
+    try {
+      const smsResult = await twilioClient.messages.create({
+        body: `Please sign your POD here: ${signingLink}`,
+        from: process.env.TWILIO_PHONE_NUMBER!,
+        to: formattedPhone,
+      });
+
+      console.log("SMS sent successfully:", smsResult.sid);
+
+      // Step 7: Update sms_status to sent
+      const { error: smsUpdateError } = await supabase
+        .from("pod_submissions")
+        .update({
+          sms_status: `sent:${smsResult.sid}`,
+        })
+        .eq("id", insertedPod.id);
+
+      if (smsUpdateError) {
+        console.error("Failed updating sms_status:", smsUpdateError);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "POD created and SMS sent successfully",
+        pod: insertedPod,
+        signingLink,
+        smsSid: smsResult.sid,
+      });
+    } catch (smsError: any) {
+      console.error("Twilio SMS failed:", smsError);
+
+      // Step 8: Update sms_status to failed
+      const { error: smsFailUpdateError } = await supabase
+        .from("pod_submissions")
+        .update({
+          sms_status: `failed:${smsError.message || "Unknown SMS error"}`,
+        })
+        .eq("id", insertedPod.id);
+
+      if (smsFailUpdateError) {
+        console.error("Failed updating sms_status after SMS failure:", smsFailUpdateError);
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: "POD saved, but SMS failed",
+          pod: insertedPod,
+          signingLink,
+          smsError: smsError.message || "Unknown Twilio error",
+          smsCode: smsError.code || null,
+          smsMoreInfo: smsError.moreInfo || null,
+        },
+        { status: 500 }
+      );
+    }
+  } catch (error: any) {
+    console.error("POD create route crashed:", error);
+
     return NextResponse.json(
-      { error: err.message || "Unexpected server error." },
+      {
+        success: false,
+        message: "Server error",
+        error: error.message || "Unknown server error",
+      },
       { status: 500 }
     );
   }
