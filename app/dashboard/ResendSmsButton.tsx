@@ -49,18 +49,32 @@ export default function ResendSmsButton({ podId }: ResendSmsButtonProps) {
         onClick={handleResend}
         disabled={loading}
         style={{
-          padding: "8px 12px",
-          cursor: "pointer",
-          fontWeight: "bold",
-          border: "1px solid #ccc",
-          backgroundColor: "#f3f3f3",
+          padding: "5px 10px",
+          cursor: loading ? "not-allowed" : "pointer",
+          fontWeight: 700,
+          fontSize: "11px",
+          border: "1.5px solid #d6d3d1",
+          backgroundColor: "#ffffff",
+          color: "#44403c",
+          borderRadius: "6px",
+          opacity: loading ? 0.7 : 1,
+          fontFamily: "inherit",
+          whiteSpace: "nowrap",
         }}
       >
-        {loading ? "Resending..." : "Resend SMS"}
+        {loading ? "Resending…" : "Resend SMS"}
       </button>
 
       {message && (
-        <div style={{ marginTop: "6px", fontSize: "12px" }}>{message}</div>
+        <div
+          style={{
+            marginTop: "4px",
+            fontSize: "11px",
+            color: message === "SMS resent." ? "#15803d" : "#dc2626",
+          }}
+        >
+          {message}
+        </div>
       )}
     </div>
   );

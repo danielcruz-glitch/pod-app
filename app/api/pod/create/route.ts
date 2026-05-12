@@ -67,7 +67,13 @@ export async function POST(req: NextRequest) {
     const signingToken = crypto.randomBytes(24).toString("hex");
 
     // Step 4: Build signing link
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000");
     const signingLink = `${appUrl}/pod/sign/${signingToken}`;
 
     console.log("Generated signing token:", signingToken);

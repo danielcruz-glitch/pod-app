@@ -1,5 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import ResendSmsButton from "./ResendSmsButton";
+import SignatureModal from "./SignatureModal";
+import FilterBar from "@/components/FilterBar";
+
+export const dynamic = "force-dynamic";
 
 type PodSubmission = {
   id: number;
@@ -19,128 +23,243 @@ type PodSubmission = {
   signing_status: string | null;
   receiver_printed_name: string | null;
   signed_at: string | null;
+  signature_data_url: string | null;
 };
 
-export default async function DashboardPage() {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const { signing = "", sms = "", q = "" } = await searchParams as {
+    signing?: string;
+    sms?: string;
+    q?: string;
+  };
+
   const { data, error } = await supabaseAdmin
     .from("pod_submissions")
     .select("*")
     .order("id", { ascending: false });
 
-  const pods = (data || []) as PodSubmission[];
+  const all = (data || []) as PodSubmission[];
+
+  const pods = all.filter((p) => {
+    if (signing && p.signing_status !== signing) return false;
+    if (sms && p.sms_status !== sms) return false;
+    if (q) {
+      const lower = q.toLowerCase();
+      const match = [p.order_number, p.customer_name, p.company].some((v) =>
+        v?.toLowerCase().includes(lower)
+      );
+      if (!match) return false;
+    }
+    return true;
+  });
 
   return (
-    <main style={{ padding: "40px" }}>
-      <h1 style={{ marginBottom: "10px" }}>Dashboard</h1>
-      <p style={{ marginBottom: "24px" }}>
-        This page shows all POD records currently in the system.
-      </p>
-
-      {error && (
-        <div
+    <main
+      style={{
+        padding: "28px 22px",
+        backgroundColor: "#fafaf9",
+        minHeight: "calc(100vh - 50px)",
+      }}
+    >
+      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        <h1
           style={{
-            padding: "12px",
-            backgroundColor: "#ffe5e5",
-            border: "1px solid #ffb3b3",
-            marginBottom: "20px",
+            margin: "0 0 14px",
+            fontSize: "19px",
+            fontWeight: 700,
+            color: "#1c1917",
           }}
         >
-          Failed to load POD records: {error.message}
-        </div>
-      )}
+          Dashboard
+        </h1>
 
-      {!error && pods.length === 0 && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#f3f3f3",
-            border: "1px solid #ddd",
-          }}
-        >
-          No POD records found.
-        </div>
-      )}
+        <FilterBar
+          signing={signing}
+          sms={sms}
+          q={q}
+          resultCount={pods.length}
+          totalCount={all.length}
+        />
 
-      {!error && pods.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <table
+        {error && (
+          <div
             style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              backgroundColor: "#fff",
+              padding: "12px 14px",
+              backgroundColor: "#fef2f2",
+              border: "1px solid #fca5a5",
+              borderRadius: "7px",
+              marginBottom: "16px",
+              fontSize: "13px",
+              color: "#dc2626",
             }}
           >
-            <thead>
-              <tr style={{ backgroundColor: "#111", color: "#fff" }}>
-                <th style={thStyle}>ID</th>
-                <th style={thStyle}>Order #</th>
-                <th style={thStyle}>Company</th>
-                <th style={thStyle}>Customer</th>
-                <th style={thStyle}>Recipient Email</th>
-                <th style={thStyle}>Delivery Address</th>
-                <th style={thStyle}>Delivery Date</th>
-                <th style={thStyle}>Delivery Time</th>
-                <th style={thStyle}>Items</th>
-                <th style={thStyle}>Driver Name</th>
-                <th style={thStyle}>Driver Phone</th>
-                <th style={thStyle}>Delivery Status</th>
-                <th style={thStyle}>POD Status</th>
-                <th style={thStyle}>SMS Status</th>
-                <th style={thStyle}>Signing Status</th>
-                <th style={thStyle}>Receiver Name</th>
-                <th style={thStyle}>Signed At</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pods.map((pod) => (
-                <tr key={pod.id}>
-                  <td style={tdStyle}>{pod.id}</td>
-                  <td style={tdStyle}>{pod.order_number || "-"}</td>
-                  <td style={tdStyle}>{pod.company || "-"}</td>
-                  <td style={tdStyle}>{pod.customer_name || "-"}</td>
-                  <td style={tdStyle}>{pod.recipient_email || "-"}</td>
-                  <td style={tdStyle}>{pod.delivery_address || "-"}</td>
-                  <td style={tdStyle}>{pod.delivery_date || "-"}</td>
-                  <td style={tdStyle}>{pod.delivery_time || "-"}</td>
-                  <td style={tdStyle}>
-                    <div style={{ whiteSpace: "pre-wrap" }}>{pod.items || "-"}</div>
-                  </td>
-                  <td style={tdStyle}>{pod.driver_name || "-"}</td>
-                  <td style={tdStyle}>{pod.driver_phone || "-"}</td>
-                  <td style={tdStyle}>{pod.delivery_status || "-"}</td>
-                  <td style={tdStyle}>{pod.pod_status || "-"}</td>
-                  <td style={tdStyle}>{pod.sms_status || "-"}</td>
-                  <td style={tdStyle}>{pod.signing_status || "pending"}</td>
-                  <td style={tdStyle}>{pod.receiver_printed_name || "-"}</td>
-                  <td style={tdStyle}>{pod.signed_at || "-"}</td>
-                  <td style={tdStyle}>
-                    {pod.signing_status === "pending" ? (
-                      <ResendSmsButton podId={pod.id} />
-                    ) : (
-                      "-"
-                    )}
-                  </td>
+            Failed to load POD records: {error.message}
+          </div>
+        )}
+
+        {!error && pods.length === 0 && (
+          <div
+            style={{
+              padding: "24px",
+              backgroundColor: "#ffffff",
+              border: "1.5px solid #d6d3d1",
+              borderRadius: "10px",
+              fontSize: "13px",
+              color: "#78716c",
+              textAlign: "center",
+            }}
+          >
+            No POD records match the current filters.
+          </div>
+        )}
+
+        {!error && pods.length > 0 && (
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              border: "1.5px solid #d6d3d1",
+              borderRadius: "10px",
+              overflowX: "auto",
+            }}
+          >
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1600px" }}>
+              <thead>
+                <tr
+                  style={{
+                    backgroundColor: "#fafaf9",
+                    borderBottom: "1.5px solid #d6d3d1",
+                  }}
+                >
+                  {[
+                    "ID",
+                    "Order #",
+                    "Company",
+                    "Customer",
+                    "Email",
+                    "Address",
+                    "Date",
+                    "Time",
+                    "Items",
+                    "Driver",
+                    "Phone",
+                    "Delivery",
+                    "POD Status",
+                    "SMS",
+                    "Signing",
+                    "Receiver",
+                    "Signed At",
+                    "Actions",
+                  ].map((h) => (
+                    <th key={h} style={thStyle}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {pods.map((pod, i) => (
+                  <tr
+                    key={pod.id}
+                    style={{
+                      backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafaf9",
+                      borderBottom: "1px solid #e7e5e4",
+                    }}
+                  >
+                    <td style={tdStyle}>{pod.id}</td>
+                    <td style={tdStyle}>{pod.order_number || "—"}</td>
+                    <td style={tdStyle}>{pod.company || "—"}</td>
+                    <td style={tdStyle}>{pod.customer_name || "—"}</td>
+                    <td style={tdStyle}>{pod.recipient_email || "—"}</td>
+                    <td style={tdStyle}>{pod.delivery_address || "—"}</td>
+                    <td style={tdStyle}>{pod.delivery_date || "—"}</td>
+                    <td style={tdStyle}>{pod.delivery_time || "—"}</td>
+                    <td style={tdStyle}>
+                      <div style={{ whiteSpace: "pre-wrap" }}>
+                        {pod.items || "—"}
+                      </div>
+                    </td>
+                    <td style={tdStyle}>{pod.driver_name || "—"}</td>
+                    <td style={tdStyle}>{pod.driver_phone || "—"}</td>
+                    <td style={tdStyle}>{pod.delivery_status || "—"}</td>
+                    <td style={tdStyle}>
+                      <StatusPill value={pod.pod_status} />
+                    </td>
+                    <td style={tdStyle}>{pod.sms_status || "—"}</td>
+                    <td style={tdStyle}>
+                      {pod.signing_status === "signed" ? (
+                        <SignatureModal
+                          podId={pod.id}
+                          orderNumber={pod.order_number}
+                          signatureDataUrl={pod.signature_data_url}
+                          receiverName={pod.receiver_printed_name}
+                          signedAt={pod.signed_at}
+                        />
+                      ) : (
+                        <StatusPill value={pod.signing_status || "pending"} />
+                      )}
+                    </td>
+                    <td style={tdStyle}>{pod.receiver_printed_name || "—"}</td>
+                    <td style={tdStyle}>{pod.signed_at || "—"}</td>
+                    <td style={tdStyle}>
+                      {pod.signing_status === "pending" ? (
+                        <ResendSmsButton podId={pod.id} />
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </main>
+  );
+}
+
+function StatusPill({ value }: { value: string | null }) {
+  if (!value) return <span style={{ color: "#78716c" }}>—</span>;
+  const signed = value.toLowerCase() === "signed";
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 8px",
+        borderRadius: "10px",
+        fontSize: "11px",
+        fontWeight: 600,
+        backgroundColor: signed ? "#d1fae5" : "#fef3c7",
+        color: signed ? "#065f46" : "#92400e",
+        border: `1px solid ${signed ? "#6ee7b7" : "#fbbf24"}`,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {value}
+    </span>
   );
 }
 
 const thStyle: React.CSSProperties = {
   textAlign: "left",
-  padding: "12px",
-  border: "1px solid #ddd",
-  fontSize: "14px",
+  padding: "10px 12px",
+  fontSize: "11px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+  color: "#78716c",
+  whiteSpace: "nowrap",
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "12px",
-  border: "1px solid #ddd",
+  padding: "10px 12px",
+  fontSize: "13px",
+  color: "#44403c",
   verticalAlign: "top",
-  fontSize: "14px",
 };

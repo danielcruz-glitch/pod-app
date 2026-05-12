@@ -48,7 +48,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const signingLink = `${process.env.NEXT_PUBLIC_BASE_URL}/pod/sign/${pod.signing_token}`;
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000");
+    const signingLink = `${baseUrl}/pod/sign/${pod.signing_token}`;
 
     await sendDriverSms(pod.driver_phone, signingLink);
 

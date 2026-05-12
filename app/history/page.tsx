@@ -1,4 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import FilterBar from "@/components/FilterBar";
+
+export const dynamic = "force-dynamic";
 
 type PodSubmission = {
   id: number;
@@ -21,131 +24,260 @@ type PodSubmission = {
   signature_data_url: string | null;
 };
 
-export default async function HistoryPage() {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+export default async function HistoryPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const { signing = "", sms = "", q = "" } = await searchParams as {
+    signing?: string;
+    sms?: string;
+    q?: string;
+  };
+
   const { data, error } = await supabaseAdmin
     .from("pod_submissions")
     .select("*")
     .order("id", { ascending: false });
 
-  const pods = (data || []) as PodSubmission[];
+  const all = (data || []) as PodSubmission[];
+
+  const pods = all.filter((p) => {
+    if (signing && p.signing_status !== signing) return false;
+    if (sms && p.sms_status !== sms) return false;
+    if (q) {
+      const lower = q.toLowerCase();
+      const match = [p.order_number, p.customer_name, p.company].some((v) =>
+        v?.toLowerCase().includes(lower)
+      );
+      if (!match) return false;
+    }
+    return true;
+  });
 
   return (
-    <main style={{ padding: "40px" }}>
-      <h1 style={{ marginBottom: "10px" }}>History</h1>
-      <p style={{ marginBottom: "24px" }}>
-        This page shows previous POD submissions.
-      </p>
-
-      {error && (
-        <div
+    <main
+      style={{
+        padding: "28px 22px",
+        backgroundColor: "#fafaf9",
+        minHeight: "calc(100vh - 50px)",
+      }}
+    >
+      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <h1
           style={{
-            padding: "12px",
-            backgroundColor: "#ffe5e5",
-            border: "1px solid #ffb3b3",
-            marginBottom: "20px",
+            margin: "0 0 14px",
+            fontSize: "19px",
+            fontWeight: 700,
+            color: "#1c1917",
           }}
         >
-          Failed to load history: {error.message}
-        </div>
-      )}
+          History
+        </h1>
 
-      {!error && pods.length === 0 && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#f3f3f3",
-            border: "1px solid #ddd",
-          }}
-        >
-          No POD history found.
-        </div>
-      )}
+        <FilterBar
+          signing={signing}
+          sms={sms}
+          q={q}
+          resultCount={pods.length}
+          totalCount={all.length}
+        />
 
-      {!error && pods.length > 0 && (
-        <div style={{ display: "grid", gap: "16px" }}>
-          {pods.map((pod) => (
-            <div
-              key={pod.id}
-              style={{
-                backgroundColor: "#fff",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                padding: "20px",
-              }}
-            >
-              <h2 style={{ marginTop: 0, marginBottom: "10px" }}>
-                POD #{pod.id}
-              </h2>
+        {error && (
+          <div
+            style={{
+              padding: "12px 14px",
+              backgroundColor: "#fef2f2",
+              border: "1px solid #fca5a5",
+              borderRadius: "7px",
+              marginBottom: "16px",
+              fontSize: "13px",
+              color: "#dc2626",
+            }}
+          >
+            Failed to load history: {error.message}
+          </div>
+        )}
 
-              <p style={{ margin: "6px 0" }}>
-                <strong>Order Number:</strong> {pod.order_number || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Company:</strong> {pod.company || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Customer:</strong> {pod.customer_name || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Recipient Email:</strong> {pod.recipient_email || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Delivery Address:</strong> {pod.delivery_address || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Delivery Date:</strong> {pod.delivery_date || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Delivery Time:</strong> {pod.delivery_time || "-"}
-              </p>
-              <p style={{ margin: "6px 0", whiteSpace: "pre-wrap" }}>
-                <strong>Items:</strong> {pod.items || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Driver Name:</strong> {pod.driver_name || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Driver Phone:</strong> {pod.driver_phone || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Delivery Status:</strong> {pod.delivery_status || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>POD Status:</strong> {pod.pod_status || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>SMS Status:</strong> {pod.sms_status || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Signing Status:</strong> {pod.signing_status || "pending"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Receiver Printed Name:</strong> {pod.receiver_printed_name || "-"}
-              </p>
-              <p style={{ margin: "6px 0" }}>
-                <strong>Signed At:</strong> {pod.signed_at || "-"}
-              </p>
+        {!error && pods.length === 0 && (
+          <div
+            style={{
+              padding: "24px",
+              backgroundColor: "#ffffff",
+              border: "1.5px solid #d6d3d1",
+              borderRadius: "10px",
+              fontSize: "13px",
+              color: "#78716c",
+              textAlign: "center",
+            }}
+          >
+            No POD history matches the current filters.
+          </div>
+        )}
 
-              {pod.signature_data_url && (
-                <div style={{ marginTop: "16px" }}>
-                  <p style={{ marginBottom: "8px" }}>
-                    <strong>Signature:</strong>
-                  </p>
-                  <img
-                    src={pod.signature_data_url}
-                    alt={`Signature for POD ${pod.id}`}
+        {!error && pods.length > 0 && (
+          <div style={{ display: "grid", gap: "12px" }}>
+            {pods.map((pod) => {
+              const isSigned =
+                (pod.signing_status || "").toLowerCase() === "signed";
+              return (
+                <div
+                  key={pod.id}
+                  style={{
+                    backgroundColor: "#ffffff",
+                    border: "1.5px solid #d6d3d1",
+                    borderRadius: "10px",
+                    padding: "18px 20px",
+                  }}
+                >
+                  {/* Card header */}
+                  <div
                     style={{
-                      maxWidth: "100%",
-                      border: "1px solid #ccc",
-                      backgroundColor: "#fff",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "14px",
+                      paddingBottom: "12px",
+                      borderBottom: "1px solid #e7e5e4",
                     }}
-                  />
+                  >
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        color: "#1c1917",
+                      }}
+                    >
+                      POD #{pod.id}
+                    </span>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        backgroundColor: isSigned ? "#d1fae5" : "#fef3c7",
+                        color: isSigned ? "#065f46" : "#92400e",
+                        border: `1px solid ${isSigned ? "#6ee7b7" : "#fbbf24"}`,
+                      }}
+                    >
+                      {pod.signing_status || "pending"}
+                    </span>
+                  </div>
+
+                  {/* Detail grid */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "6px 24px",
+                    }}
+                  >
+                    {[
+                      ["Order Number", pod.order_number],
+                      ["Company", pod.company],
+                      ["Customer", pod.customer_name],
+                      ["Recipient Email", pod.recipient_email],
+                      ["Delivery Address", pod.delivery_address],
+                      ["Delivery Date", pod.delivery_date],
+                      ["Delivery Time", pod.delivery_time],
+                      ["Driver Name", pod.driver_name],
+                      ["Driver Phone", pod.driver_phone],
+                      ["Delivery Status", pod.delivery_status],
+                      ["POD Status", pod.pod_status],
+                      ["SMS Status", pod.sms_status],
+                      ["Receiver Name", pod.receiver_printed_name],
+                      ["Signed At", pod.signed_at],
+                    ].map(([label, value]) => (
+                      <div key={label as string}>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.07em",
+                            color: "#78716c",
+                          }}
+                        >
+                          {label}
+                        </span>
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            color: value ? "#1c1917" : "#a8a29e",
+                            marginTop: "2px",
+                          }}
+                        >
+                          {value || "—"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Items (full width) */}
+                  {pod.items && (
+                    <div style={{ marginTop: "10px" }}>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.07em",
+                          color: "#78716c",
+                        }}
+                      >
+                        Items
+                      </span>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "#1c1917",
+                          marginTop: "2px",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {pod.items}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Signature */}
+                  {pod.signature_data_url && (
+                    <div style={{ marginTop: "14px" }}>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.07em",
+                          color: "#78716c",
+                          display: "block",
+                          marginBottom: "6px",
+                        }}
+                      >
+                        Signature
+                      </span>
+                      <img
+                        src={pod.signature_data_url}
+                        alt={`Signature for POD ${pod.id}`}
+                        style={{
+                          maxWidth: "100%",
+                          border: "1.5px solid #d6d3d1",
+                          borderRadius: "7px",
+                          backgroundColor: "#ffffff",
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
