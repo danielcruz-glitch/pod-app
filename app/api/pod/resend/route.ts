@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendDriverSms } from "@/lib/sendSms";
+import { sendSigningEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -27,20 +27,6 @@ export async function POST(req: Request) {
       );
     }
 
-    if (pod.signing_status === "signed") {
-      return NextResponse.json(
-        { error: "This POD is already signed. No resend needed." },
-        { status: 400 }
-      );
-    }
-
-    if (!pod.driver_phone) {
-      return NextResponse.json(
-        { error: "Driver phone is missing on this POD." },
-        { status: 400 }
-      );
-    }
-
     if (!pod.signing_token) {
       return NextResponse.json(
         { error: "Signing token is missing on this POD." },
@@ -56,27 +42,29 @@ export async function POST(req: Request) {
         : process.env.VERCEL_URL
         ? `https://${process.env.VERCEL_URL}`
         : "http://localhost:3000");
+
     const signingLink = `${baseUrl}/pod/sign/${pod.signing_token}`;
 
-    await sendDriverSms(pod.driver_phone, signingLink);
+    await sendSigningEmail({
+      signingLink,
+      orderNumber: pod.order_number,
+      company: pod.company,
+      customerName: pod.customer_name,
+      driverName: pod.driver_name,
+      deliveryDate: pod.delivery_date,
+    });
 
-    const { error: updateError } = await supabaseAdmin
+    await supabaseAdmin
       .from("pod_submissions")
-      .update({ sms_status: "resent" })
+      .update({ sms_status: "email_resent" })
       .eq("id", pod.id);
-
-    if (updateError) {
-      console.error("Failed to update sms_status to resent:", updateError.message);
-    }
 
     return NextResponse.json({
       success: true,
-      message: "SMS resent successfully.",
+      message: "Email notification resent successfully.",
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Unexpected server error." },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unexpected server error.";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 
-type ResendSmsButtonProps = {
+type Props = {
   podId: number;
 };
 
-export default function ResendSmsButton({ podId }: ResendSmsButtonProps) {
+export default function ResendSmsButton({ podId }: Props) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -17,26 +17,21 @@ export default function ResendSmsButton({ podId }: ResendSmsButtonProps) {
     try {
       const response = await fetch("/api/pod/resend", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pod_id: podId,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pod_id: podId }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to resend SMS.");
+        throw new Error(result.error || "Failed to resend notification.");
       }
 
-      setMessage("SMS resent.");
-      setTimeout(() => {
-        window.location.reload();
-      }, 800);
-    } catch (error: any) {
-      setMessage(error.message || "Something went wrong.");
+      setMessage("Email sent.");
+      setTimeout(() => window.location.reload(), 800);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Something went wrong.";
+      setMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -62,7 +57,7 @@ export default function ResendSmsButton({ podId }: ResendSmsButtonProps) {
           whiteSpace: "nowrap",
         }}
       >
-        {loading ? "Resending…" : "Resend SMS"}
+        {loading ? "Sending…" : "Resend Email"}
       </button>
 
       {message && (
@@ -70,7 +65,7 @@ export default function ResendSmsButton({ podId }: ResendSmsButtonProps) {
           style={{
             marginTop: "4px",
             fontSize: "11px",
-            color: message === "SMS resent." ? "#15803d" : "#dc2626",
+            color: message === "Email sent." ? "#15803d" : "#dc2626",
           }}
         >
           {message}

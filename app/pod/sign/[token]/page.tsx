@@ -1,22 +1,17 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import SignatureForm from "./SignatureForm";
 
 type SignPageProps = {
-  params: {
-    token: string;
-  };
+  params: Promise<{ token: string }>;
 };
 
 export default async function SignPage({ params }: SignPageProps) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const { token } = await params;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("pod_submissions")
     .select("*")
-    .eq("signing_token", params.token)
+    .eq("signing_token", token)
     .single();
 
   if (error || !data) {
@@ -223,7 +218,7 @@ export default async function SignPage({ params }: SignPageProps) {
           >
             Sign Below
           </div>
-          <SignatureForm token={params.token} />
+          <SignatureForm token={token} />
         </div>
       </div>
     </main>

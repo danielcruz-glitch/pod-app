@@ -137,26 +137,33 @@ export default async function DashboardPage({
                   }}
                 >
                   {[
+                    "Actions",
                     "ID",
+                    "POD Status",
+                    "Signing",
                     "Order #",
                     "Company",
                     "Customer",
-                    "Email",
                     "Address",
-                    "Date",
-                    "Time",
                     "Items",
                     "Driver",
-                    "Phone",
+                    "Date",
+                    "Time",
                     "Delivery",
-                    "POD Status",
                     "SMS",
-                    "Signing",
                     "Receiver",
                     "Signed At",
-                    "Actions",
+                    "Phone",
+                    "Email",
                   ].map((h) => (
-                    <th key={h} style={thStyle}>
+                    <th
+                      key={h}
+                      style={
+                        h === "Actions"
+                          ? { ...thStyle, position: "sticky", left: 0, backgroundColor: "#fafaf9", zIndex: 1 }
+                          : thStyle
+                      }
+                    >
                       {h}
                     </th>
                   ))}
@@ -171,26 +178,13 @@ export default async function DashboardPage({
                       borderBottom: "1px solid #e7e5e4",
                     }}
                   >
-                    <td style={tdStyle}>{pod.id}</td>
-                    <td style={tdStyle}>{pod.order_number || "—"}</td>
-                    <td style={tdStyle}>{pod.company || "—"}</td>
-                    <td style={tdStyle}>{pod.customer_name || "—"}</td>
-                    <td style={tdStyle}>{pod.recipient_email || "—"}</td>
-                    <td style={tdStyle}>{pod.delivery_address || "—"}</td>
-                    <td style={tdStyle}>{pod.delivery_date || "—"}</td>
-                    <td style={tdStyle}>{pod.delivery_time || "—"}</td>
-                    <td style={tdStyle}>
-                      <div style={{ whiteSpace: "pre-wrap" }}>
-                        {pod.items || "—"}
-                      </div>
+                    <td style={{ ...tdStyle, position: "sticky", left: 0, backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafaf9", zIndex: 1 }}>
+                      <ResendSmsButton podId={pod.id} />
                     </td>
-                    <td style={tdStyle}>{pod.driver_name || "—"}</td>
-                    <td style={tdStyle}>{pod.driver_phone || "—"}</td>
-                    <td style={tdStyle}>{pod.delivery_status || "—"}</td>
+                    <td style={tdStyle}>{pod.id}</td>
                     <td style={tdStyle}>
                       <StatusPill value={pod.pod_status} />
                     </td>
-                    <td style={tdStyle}>{pod.sms_status || "—"}</td>
                     <td style={tdStyle}>
                       {pod.signing_status === "signed" ? (
                         <SignatureModal
@@ -204,15 +198,24 @@ export default async function DashboardPage({
                         <StatusPill value={pod.signing_status || "pending"} />
                       )}
                     </td>
+                    <td style={tdStyle}>{pod.order_number || "—"}</td>
+                    <td style={tdStyle}>{pod.company || "—"}</td>
+                    <td style={tdStyle}>{pod.customer_name || "—"}</td>
+                    <td style={tdStyle}>{pod.delivery_address || "—"}</td>
+                    <td style={tdStyle}>
+                      <div style={{ whiteSpace: "pre-wrap" }}>
+                        {pod.items || "—"}
+                      </div>
+                    </td>
+                    <td style={tdStyle}>{pod.driver_name || "—"}</td>
+                    <td style={tdStyle}>{pod.delivery_date || "—"}</td>
+                    <td style={tdStyle}>{pod.delivery_time || "—"}</td>
+                    <td style={tdStyle}>{pod.delivery_status || "—"}</td>
+                    <td style={tdStyle}>{pod.sms_status || "—"}</td>
                     <td style={tdStyle}>{pod.receiver_printed_name || "—"}</td>
                     <td style={tdStyle}>{pod.signed_at || "—"}</td>
-                    <td style={tdStyle}>
-                      {pod.signing_status === "pending" ? (
-                        <ResendSmsButton podId={pod.id} />
-                      ) : (
-                        "—"
-                      )}
-                    </td>
+                    <td style={tdStyle}>{pod.driver_phone || "—"}</td>
+                    <td style={tdStyle}>{pod.recipient_email || "—"}</td>
                   </tr>
                 ))}
               </tbody>

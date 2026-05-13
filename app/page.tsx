@@ -70,7 +70,7 @@ export default function HomePage() {
         throw new Error(result.error || "Failed to create POD.");
       }
 
-      setStatusMessage("POD created and SMS sent successfully.");
+      setStatusMessage("POD created and email notification sent successfully.");
 
       setOrderNumber("");
       setCompany("");
@@ -159,7 +159,7 @@ export default function HomePage() {
               color: "#1c1917",
             }}
           >
-            New Delivery Order
+            Create POD
           </h1>
           <span
             style={{
@@ -366,24 +366,18 @@ export default function HomePage() {
           </div>
 
           <div style={{ marginBottom: "20px" }}>
-            <FieldLabel text="Driver Phone" required />
+            <FieldLabel text="Driver Phone" />
             <input
               id="driver_phone"
               name="driver_phone"
               type="tel"
-              placeholder="+19175551234"
+              placeholder="e.g. 9175551234"
               value={driverPhone}
               onChange={(e) => setDriverPhone(e.target.value)}
-              required
               onFocus={() => setFocused("driver_phone")}
               onBlur={() => setFocused(null)}
               style={iStyle("driver_phone", driverPhone)}
             />
-            <p
-              style={{ fontSize: "11px", color: "#78716c", margin: "4px 0 0" }}
-            >
-              Format: +19175551234
-            </p>
           </div>
 
           <button
@@ -404,7 +398,7 @@ export default function HomePage() {
               fontFamily: "inherit",
             }}
           >
-            {loading ? "Submitting..." : "Create POD and Send SMS →"}
+            {loading ? "Submitting…" : "Create POD & Send Email →"}
           </button>
         </form>
 

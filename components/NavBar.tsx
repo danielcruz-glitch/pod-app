@@ -54,7 +54,7 @@ export default function NavBar() {
       </div>
 
       <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-        <NavLink href="/" label="Dispatch" active={pathname === "/"} />
+        <NavLink href="/" label="Create POD" active={pathname === "/"} />
         <NavLink
           href="/dashboard"
           label="Dashboard"
